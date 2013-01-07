@@ -1,0 +1,358 @@
+#+TITLE: pcfinancial
+#+author: Warren Wilkinson
+#+email: warrenwilkinson@gmail.com
+
+# Repository: https://github.com/WarrenWilkinson/pcfinancial
+
+* Overview 
+
+The pcfinancial package uses Drakma to download CSV data from the PC Financial website. 
+
+#+begin_src lisp
+  (pcf:login "your-password" "cardNumber-from-your-cookie")
+  (setf *csv-data* (pcf:download-transactions "your-account" (encode-universal-time 0 0 0 day month year)))
+  (pcf:logoff)
+#+end_src lisp
+
+You need 3 magic values to make it work. You can get most of them through creative web browsing.
+
+ * Your Password in plain text (the transfer is done using SSH though, so it's secure I guess).
+ * cardNumber as found in a cookie from your webbrowser.  It's a hashed value (I think). If you have many cards,
+   get a unique cookie for each one by using incognito browser mode and PCFinancials 'add card' option on the login page.
+ * your-account is a string in the form "##,#####,##############".  Log in with a web browser and inspect the 
+   'Account' select options on the download page (https://www.txn.banking.pcfinancial.ca/a/banking/accounts/downloadTransactions1.ams).
+
+** Features
+
+   * Login, Logoff and download transactions.
+   * Omitting the 'since' date from download transactions will cause it to download all since last download.
+
+** Limitations
+
+  * It doesn't parse the CSV.
+  * Can't help you find the magic numbers.
+  * It's a scrapper, so if the PCfinancial site changes, this will break..
+  * There are no tests.
+
+* Installation
+** Quick Lisp
+
+Install [[http://www.quicklisp.org/beta/][Quick Lisp]] and then run:
+
+#+BEGIN_SRC lisp
+(ql:quickload 'cl-pcfinancial)
+#+END_SRC
+
+If you have problems, see the [[#support][support]] section, and you may want to [[#runtests][run the tests]].
+
+** Gentoo
+
+As root, 
+
+#+BEGIN_SRC sh
+emerge cl-pcfinancial
+#+END_SRC
+
+Once the emerge is finished, the package can be loaded using ASDF:
+#+BEGIN_SRC lisp
+(asdf:operate 'asdf:load-op :cl-pcfinancial)
+#+END_SRC
+
+If you have problems, see the [[#support][support]] section.
+
+** Ubunto
+
+#+BEGIN_SRC sh
+sudo apt-get install cl-pcfinancial
+#+END_SRC
+
+Once the installation is finished, the package is loadable using ASDF:
+
+#+BEGIN_SRC lisp
+(asdf:operate 'asdf:load-op :cl-pcfinancial)
+#+END_SRC
+
+If you have problems, see the [[#support][support]] section.
+
+** Manual Installation
+
+In summary: Untar the [[https://github.com/WarrenWilkinson/cl-pcfinancial/archive/master.tar.gz][.tar]] package and then symlink the .asd files into a place where ASDF can find them. 
+
+  1. Untar the files where you want them to be.  On windows download the [[https://github.com/WarrenWilkinson/cl-pcfinancial/archive/master.zip][.zip]] and unzip it instead, it's the same files.
+  2. ASDF could be looking anywhere -- it depends on your setup.  Run this in your lisp repl to get a clue
+     as to where ASDF is seeking libraries[fn:: you might need to (require 'asdf) before running this example]:
+
+     #+BEGIN_SRC lisp
+        (mapcan #'funcall asdf:*default-source-registries*)
+     #+END_SRC
+
+  3. Symlink the .asd files to the source directory. If you use windows, [[http://bc.tech.coop/blog/041113.html][these instructions on symlink alternatives apply to you]].
+
+Once the files are in place, the package can be loaded with ASDF by:
+#+BEGIN_SRC lisp
+(asdf:operate 'asdf:load-op :cl-pcfinancial)
+#+END_SRC
+
+If you have problems, see the [[#support][support]] section. 
+
+** Getting Support
+   :PROPERTIES:
+   :CUSTOM-ID:  support
+   :END:
+
+You can find support on this libraries [[http://warrenwilkinson.ca/cl-pcfinancial][website]] and/or [[https://github.com/WarrenWilkinson/cl-pcfinancial][github]] repository. Or you can email [[mailto:warrenwilkinson@gmail.com][Warren Wilkinson]].
+
+* Implementation
+
+This library is a thin layer on top of Drakma. It provides nearly no features, and that is my intention.
+Scrapping is volatile because it relies on unreliable things.
+
+  1. The source website
+  2. Your internet connection
+  3. Magic numbers, cookies, etc.
+
+This tiny library may break occasionally, but we'll know the error is somewhere in
+it's 85 loc.  If it had features, debugging would be hard: is it broken or has the 
+underlying website changed?
+
+** Logging In
+
+A cookie-jar is created/bound and it has your cardNumber.  Then we log in with your password and cardNumber 0.
+
+#+name: login
+#+begin_src lisp
+(defun login (password cardNumber)
+  (if *cookie-jar*
+      (error "Already logged in...")
+      (setf *cookie-jar* 
+	    (make-instance 'drakma:cookie-jar
+			   :cookies (list
+				     (make-instance 'drakma:cookie 
+						    :name "cardNumber"
+						    :value cardNumber 
+						    :domain "www.txn.banking.pcfinancial.ca")))))
+  (submit-to "https://www.txn.banking.pcfinancial.ca/a/authentication/signOn.ams"
+	     (cons "cardNumberSaved" "0")
+	     (cons "password" password)))
+#+end_src
+
+** Downloading Transactions
+
+Once logged in, we can just post the required variables! 
+
+#+name: download
+#+begin_src lisp
+(defun download-transactions (account &optional since)
+  (multiple-value-bind (sec min hour day month year) (decode-universal-time (or since (get-universal-time)))
+    (declare (ignore sec min hour))
+    (setf month (princ-to-string (decf month))
+	  year (princ-to-string year)
+          day (princ-to-string day))
+    (submit-to "https://www.txn.banking.pcfinancial.ca/a/banking/accounts/downloadTransactions2.ams"
+	       (cons "fromAccount" account)
+	       (cons "sinceLastDownload" (if since "false" "true"))
+	       (cons "previewDownload" "false")
+	       (cons "pfmSoftware" "other")
+	       (cons "fromDate__YEAR" year)
+	       (cons "fromDate__MONTH" month)
+	       (cons "fromDade__DAY" day))))
+#+end_src
+
+** Logging Out
+
+Go to the signOff page and set our cookie-jar to nil.
+
+#+name: logout
+#+begin_src lisp
+  (defun logout ()
+    (multiple-value-prog1 (open-url "https://www.txn.banking.pcfinancial.ca/a/authentication/signOff.ams")
+      (setf *cookie-jar* nil)))
+#+end_src
+
+* License
+
+cl-pcfinancial is distributed under the [[http://opensource.org/licenses/mit-license.php][MIT]] license.
+
+* Tangles							   :NOEXPORT:
+** Copyright
+#+name: copyright
+#+begin_src lisp 
+;;; BEGIN_LICENSE:MIT
+;; Copyright (c) 2031 Warren Wilkinson <warrenwilkinson@gmail.com>
+
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
+
+;;; END_LICENSE
+#+end_src 
+
+** cl-pcfinancial.lisp
+#+begin_src lisp :tangle cl-pcfinancial.lisp :noweb yes 
+    ;;; -*- Mode: LISP; Syntax: common-lisp; Package: cl-pcfinancial; Base: 10 -*-
+    
+  <<copyright>> 
+  
+  (defpackage :cl-pcfinancial
+    (:nicknames :pcf)
+    (:use :common-lisp :drakma)
+    (:export login logout download-transactions))
+  
+  (in-package :cl-pcfinancial)
+  
+  (defvar *cookie-jar* nil)
+  (defvar *force-ssh* t)
+  
+  (defun open-url (url)
+    (drakma:http-request url :force-ssl *force-ssh* :cookie-jar *cookie-jar*))
+  
+  (defun submit-to (url &rest parameters)
+    (drakma:http-request url :method :post :force-ssl *force-ssh* :cookie-jar *cookie-jar*
+                         :parameters parameters))
+  
+  <<login>>
+  
+  <<logout>>
+  
+  <<download>>
+#+end_src
+
+** cl-pcfinancial.asd
+#+begin_src lisp :tangle cl-pcfinancial.asd :noweb yes
+  ;;; -*- Mode: LISP; Syntax: common-lisp;  Base: 10 -*-
+  
+  <<copyright>>
+  
+  (defsystem :cl-pcfinancial
+    :name "cl-pcfinancial"
+    :version "1.0.0"
+    :author "Warren Wilkinson <warrenwilkinson@gmail.com>"
+    :license "MIT"
+    :depends-on (:drakma)
+    :description "A thin layer over Drakma to download financial statements from PC Financial."
+    :components ((:file "cl-pcfinancial")))
+#+end_src
+
+* Stuff To Do							   :NOEXPORT:
+** DONE Get a github account place to put this on.
+https://github.com/WarrenWilkinson/changed-stream
+** DONE Populate the getting support part.
+
+** DONE Make it main source Tanglable
+** DONE Write appropriate copyright header.
+** DONE Tangle and ASDF load
+** DONE Put version number in this file.
+** DONE Grab ASD descriptions from this file.
+
+** DONE Rename changed-stream.tests to changed-stream.test
+
+** DONE Publish this as HTML and make it the projects webpage.
+** TODO package and release.
+*** TODO Get an ebuild done.
+*** WAITING Get it onto quicklisp.
+*** TODO Get integration with cl-test-grid
+https://github.com/cl-test-grid/cl-test-grid
+
+
+
+;; This guy is designed to download transactions from PC financial and 
+;; put them into some kind of LISP format. That is it.  
+;;
+;; Because web scraping is SO unreliable, this guy has to do basically
+;; NOTHING but do it's job, a few checks and complain LOUDLY if there is
+;; an error!
+
+(defpackage :pcfinancial
+  (:use :common-lisp :drakma)
+  (:export login logoff download-transactions))
+
+(in-package :pcfinancial)
+
+(require :drakma)
+
+(defvar *cookie-jar* nil)
+(defvar *force-ssh* t)
+
+;; TODO -- Save response variables. Then I can make asserters and also 'show last output'
+
+(defmacro with-ssh-only (() &rest body)
+  `(let ((*force-ssh* t))
+     (declare (special *force-ssh*))
+     ,@body))
+
+(defun open-url (url)
+  (drakma:http-request url :force-ssl *force-ssh* :cookie-jar *cookie-jar*))
+
+(defun submit-to (url &rest parameters)
+  (drakma:http-request url :method :post :force-ssl *force-ssh* :cookie-jar *cookie-jar*
+		       :parameters parameters))
+
+(defun logoff ()
+  (open-url "https://www.txn.banking.pcfinancial.ca/a/authentication/signOff.ams")
+  (setf *cookie-jar* nil))
+
+(defun login (password cardNumber)
+  (if *cookie-jar*
+      (error "Already logged in...")
+      (setf *cookie-jar* 
+	    (make-instance 'drakma:cookie-jar
+			   :cookies (list
+				     (make-instance 'drakma:cookie 
+						    :name "cardNumber"
+						    :value cardNumber 
+						    :domain "www.txn.banking.pcfinancial.ca")))))
+
+  (open-url "https://www.txn.banking.pcfinancial.ca/a/authentication/preSignOn.ams")
+  ;; TODO -- Assert that there is an OPTION VALUE='0'... or present the options.
+
+  (submit-to "https://www.txn.banking.pcfinancial.ca/a/authentication/signOn.ams"
+	     (cons "cardNumberSaved" "0")
+	     (cons "password" password)))
+  ;; And what values do I want back?
+  ;; Should be a 302 found response... return the location should be 
+  ;; https://www.txn.banking.pcfinancial.ca/a/banking/accounts/accountSummary.ams
+
+
+(defun account-summary ()
+  (unless *cookie-jar* (error "Log in first..."))
+  (open-url "https://www.txn.banking.pcfinancial.ca/a/banking/accounts/accountSummary.ams"))
+
+(defun account-activities () 
+  (unless *cookie-jar* (error "Log in first..."))
+  (open-url "https://www.txn.banking.pcfinancial.ca/a/banking/accounts/accountActivity.page"))
+
+(defun download-transactions-page ()
+  (unless *cookie-jar* (error "Log in first..."))
+  (open-url "https://www.txn.banking.pcfinancial.ca/a/banking/accounts/downloadTransactions1.ams"))
+  
+(defun download-transactions (account &optional since)
+  (multiple-value-bind (sec min hour day month year) (decode-universal-time (or since (get-universal-time)))
+    (declare (ignore sec min hour))
+    (setf month (princ-to-string (decf month))
+	  year (princ-to-string year)
+          day (princ-to-string day))
+    (submit-to "https://www.txn.banking.pcfinancial.ca/a/banking/accounts/downloadTransactions2.ams"
+	       (cons "fromAccount" account)
+	       (cons "sinceLastDownload" (if since "false" "true"))
+	       (cons "previewDownload" "false")
+	       (cons "pfmSoftware" "other")
+	       (cons "fromDate_YEAR" year)
+	       (cons "fromDate_MONTH" month)
+	       (cons "fromDATE_DAY" day))))
