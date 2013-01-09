@@ -1,6 +1,7 @@
 #+TITLE: pcfinancial
 #+author: Warren Wilkinson
 #+email: warrenwilkinson@gmail.com
+#+LATEX_CLASS: tufte
 
 # Repository: https://github.com/WarrenWilkinson/pcfinancial
 
@@ -155,7 +156,7 @@ Once logged in, we can just post the required variables!
 	       (cons "pfmSoftware" "other")
 	       (cons "fromDate__YEAR" year)
 	       (cons "fromDate__MONTH" month)
-	       (cons "fromDade__DAY" day))))
+	       (cons "fromDate__DAY" day))))
 #+end_src
 
 ** Logging Out
