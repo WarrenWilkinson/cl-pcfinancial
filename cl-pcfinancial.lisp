@@ -41,7 +41,6 @@
   (drakma:http-request url :force-ssl *force-ssh* :cookie-jar *cookie-jar*))
 
 (defun submit-to (url &rest parameters)
-  (format t "~%PARAMS: ~s" parameters)
   (drakma:http-request url :method :post :force-ssl *force-ssh* :cookie-jar *cookie-jar*
                        :parameters parameters))
 
@@ -77,3 +76,6 @@
                (cons "fromDate__YEAR" year)
                (cons "fromDate__MONTH" month)
                (cons "fromDate__DAY" day))))
+
+
+
