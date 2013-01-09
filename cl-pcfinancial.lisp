@@ -80,4 +80,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  
-<datefuncs>
+(defun string-date-to-ymd (date)
+  (values (parse-integer (subseq date 6 10))
+          (parse-integer (subseq date 0 2))
+          (parse-integer (subseq date 3 5))))
+
+(defun string-date-to-universal-time (date)
+  (multiple-value-bind (y m d) (pc-financial-date-to-ymd date)
+    (encode-universal-time 0 0 0 d m y)))

@@ -255,7 +255,7 @@ cl-pcfinancial is distributed under the [[http://opensource.org/licenses/mit-lic
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  
-  <datefuncs>
+  <<datefuncs>>
 #+end_src
 
 ** cl-pcfinancial.asd
