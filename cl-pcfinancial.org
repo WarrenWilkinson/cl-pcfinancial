@@ -10,8 +10,12 @@
 The pcfinancial package uses Drakma to download CSV data from the PC Financial website. 
 
 #+begin_src lisp
+  (setf *unparsed-csv* (pcf:fetch-and-logout "your-account" "date-or-nil" "your-password" "your-card-hash"))
+#+end_src lisp
+-or-
+#+begin_src lisp
   (pcf:login "your-password" "cardNumber-from-your-cookie")
-  (setf *csv-data* (pcf:download-transactions "your-account" (encode-universal-time 0 0 0 day month year)))
+  (setf *unparsed-csv* (pcf:download-transactions "your-account" (encode-universal-time 0 0 0 day month year)))
   (pcf:logoff)
 #+end_src lisp
 
@@ -188,6 +192,17 @@ Within this package are some utilities to split PC Finance's date format (mm/dd/
     (encode-universal-time 0 0 0 d m y)))
 #+end_src
 
+The fetch-and-logout function will fetch the transactions and logout safely.
+
+#+name: fetchandlogout
+#+begin_src lisp
+  (defun fetch-and-logout (account date password cardhash)
+    (login password cardhash)
+    (unwind-protect (download-transactions account date)
+      (logout)))
+  
+#+end_src
+
 * License
 
 cl-pcfinancial is distributed under the [[http://opensource.org/licenses/mit-license.php][MIT]] license.
@@ -233,7 +248,8 @@ cl-pcfinancial is distributed under the [[http://opensource.org/licenses/mit-lic
     (:nicknames :pcf)
     (:use :common-lisp :drakma)
     (:export login logout download-transactions
-             string-date-to-ymd string-date-to-universal-time))
+             string-date-to-ymd string-date-to-universal-time
+             fetch-and-logout))
   
   (in-package :cl-pcfinancial)
   
@@ -256,6 +272,8 @@ cl-pcfinancial is distributed under the [[http://opensource.org/licenses/mit-lic
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  
   <<datefuncs>>
+
+  <<fetchandlogout>>
 #+end_src
 
 ** cl-pcfinancial.asd

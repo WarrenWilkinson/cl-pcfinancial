@@ -31,7 +31,8 @@
   (:nicknames :pcf)
   (:use :common-lisp :drakma)
   (:export login logout download-transactions
-           string-date-to-ymd string-date-to-universal-time))
+           string-date-to-ymd string-date-to-universal-time
+           fetch-and-logout))
 
 (in-package :cl-pcfinancial)
 
@@ -88,3 +89,8 @@
 (defun string-date-to-universal-time (date)
   (multiple-value-bind (y m d) (pc-financial-date-to-ymd date)
     (encode-universal-time 0 0 0 d m y)))
+
+(defun fetch-and-logout (account date password cardhash)
+  (login password cardhash)
+  (unwind-protect (download-transactions account date)
+    (logout)))
