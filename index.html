@@ -7,7 +7,7 @@
 <meta http-equiv="Content-Type" content="text/html;charset=iso-8859-1"/>
 <meta name="title" content="pcfinancial"/>
 <meta name="generator" content="Org-mode"/>
-<meta name="generated" content="2013-01-09T13:01-0700"/>
+<meta name="generated" content="2013-01-09T13:32-0700"/>
 <meta name="author" content="Warren Wilkinson"/>
 <meta name="description" content=""/>
 <meta name="keywords" content=""/>
@@ -118,7 +118,6 @@ for the JavaScript code in this tag.
 <h1 class="title">pcfinancial</h1>
 
 
-
 <div id="table-of-contents">
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
@@ -162,8 +161,16 @@ The pcfinancial package uses Drakma to download CSV data from the PC Financial w
 
 
 
+<pre class="example">(setf *unparsed-csv* (pcf:fetch-and-logout "your-account" "date-or-nil" "your-password" "your-card-hash"))
+</pre>
+
+<p>
+-or-
+</p>
+
+
 <pre class="example">(pcf:login "your-password" "cardNumber-from-your-cookie")
-(setf *csv-data* (pcf:download-transactions "your-account" (encode-universal-time 0 0 0 day month year)))
+(setf *unparsed-csv* (pcf:download-transactions "your-account" (encode-universal-time 0 0 0 day month year)))
 (pcf:logoff)
 </pre>
 
@@ -506,6 +513,20 @@ Within this package are some utilities to split PC Finance's date format (mm/dd/
 </pre>
 
 
+<p>
+The fetch-and-logout function will fetch the transactions and logout safely.
+</p>
+
+
+
+<pre class="example">(defun fetch-and-logout (account date password cardhash)
+  (login password cardhash)
+  (unwind-protect (download-transactions account date)
+    (logout)))
+
+</pre>
+
+
 </div>
 </div>
 
@@ -534,7 +555,7 @@ cl-pcfinancial is distributed under the <a href="http://opensource.org/licenses/
 </div>
 
 <div id="postamble">
-<p class="date">Date: 2013-01-09T13:01-0700</p>
+<p class="date">Date: 2013-01-09T13:32-0700</p>
 <p class="author">Author: Warren Wilkinson</p>
 <p class="creator"><a href="http://orgmode.org">Org</a> version 7.9.2 with <a href="http://www.gnu.org/software/emacs/">Emacs</a> version 24</p>
 <a href="http://validator.w3.org/check?uri=referer">Validate XHTML 1.0</a>
