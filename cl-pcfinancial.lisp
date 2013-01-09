@@ -30,7 +30,8 @@
 (defpackage :cl-pcfinancial
   (:nicknames :pcf)
   (:use :common-lisp :drakma)
-  (:export login logout download-transactions))
+  (:export login logout download-transactions
+           string-date-to-ymd string-date-to-universal-time))
 
 (in-package :cl-pcfinancial)
 
@@ -77,5 +78,6 @@
                (cons "fromDate__MONTH" month)
                (cons "fromDate__DAY" day))))
 
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+<datefuncs>

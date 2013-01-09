@@ -170,6 +170,24 @@ Go to the signOff page and set our cookie-jar to nil.
       (setf *cookie-jar* nil)))
 #+end_src
 
+** Other Utilities
+
+For reading the CSV data, I recommend [[http://warrenwilkinson.ca/read-csv][read-csv]][[fn: A lisp library for parsing CSV, also written by me.]].
+
+Within this package are some utilities to split PC Finance's date format (mm/dd/yyyy) into Y, M, D.
+
+#+name: datefuncs
+#+begin_src lisp
+(defun string-date-to-ymd (date)
+  (values (parse-integer (subseq date 6 10))
+          (parse-integer (subseq date 0 2))
+	  (parse-integer (subseq date 3 5))))
+
+(defun string-date-to-universal-time (date)
+  (multiple-value-bind (y m d) (pc-financial-date-to-ymd date)
+    (encode-universal-time 0 0 0 d m y)))
+#+end_src
+
 * License
 
 cl-pcfinancial is distributed under the [[http://opensource.org/licenses/mit-license.php][MIT]] license.
@@ -214,7 +232,8 @@ cl-pcfinancial is distributed under the [[http://opensource.org/licenses/mit-lic
   (defpackage :cl-pcfinancial
     (:nicknames :pcf)
     (:use :common-lisp :drakma)
-    (:export login logout download-transactions))
+    (:export login logout download-transactions
+             string-date-to-ymd string-date-to-universal-time))
   
   (in-package :cl-pcfinancial)
   
@@ -233,6 +252,10 @@ cl-pcfinancial is distributed under the [[http://opensource.org/licenses/mit-lic
   <<logout>>
   
   <<download>>
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+  <datefuncs>
 #+end_src
 
 ** cl-pcfinancial.asd
